@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "strictNullChecks": true, // enable strict null checks as a best practice
+    "strictNullChecks": true,
     "allowJs": false,
     "module": "commonjs",
     "esModuleInterop": true,

@@ -1,4 +1,4 @@
-import { GreetCommand } from '../../src/commands/greet';
+import {GreetCommand} from "../../src/commands/greetCommand";
 
 describe('GreetCommand', () => {
   const command = new GreetCommand();
