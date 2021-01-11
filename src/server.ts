@@ -66,6 +66,11 @@ export class Server
     private audioStream = new PassThrough();
     private voiceConnection:VoiceConnection;
 
+    public stop():void
+    {
+        this.discordClient.destroy();
+    }
+
     public run():void
     {
         const udpClient = require("dgram").createSocket({type: "udp4", reuseAddr: true});
