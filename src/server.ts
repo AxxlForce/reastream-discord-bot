@@ -3,8 +3,9 @@ import {CommandHandler} from "./comanndHandler";
 import {BotConfig, config} from "./config/config";
 import {PassThrough} from "stream";
 import {Logger} from "./util/logger";
-
-const dgram = require("dgram");
+import {Reastream} from "./reastream/reastream";
+import {ReastreamChannelIdentifier} from "./reastream/reastreamChannelIdentifier";
+import {Sample16Bit} from "./sample16Bit";
 
 export class Server
 {
@@ -23,52 +24,25 @@ export class Server
 
     public run():void
     {
-        // this.stream.on("data", (chunk) =>
-        // {
-        //     console.log(chunk);
-        // });
+        const udpClient = require("dgram").createSocket({type: "udp4", reuseAddr: true});
 
-        const udpClient = dgram.createSocket({type: "udp4", reuseAddr: true});
-
-        udpClient.on("listening", function ()
+        udpClient.on("listening", () =>
         {
             const address = udpClient.address();
             Logger.log(this, "listening on :" + address.address + ":" + address.port);
         });
 
-        udpClient.on("message", (msg:Uint8Array, info:any) =>
+        udpClient.on("message", (data:Uint8Array, info:any) =>
         {
-            // console.log("Data received from server : " + msg.toString());
-            // console.log("Received %d bytes from %s:%d\n", msg.length, info.address, info.port);
-
-            const packetSize = msg[4] | msg[5] << 8;
-            const numberOfChannels = msg[40];
-            const frequency = msg[41] | msg[42] << 8;
-            const dataSize = msg[45] | msg[46] << 8;
-            let offset = 47;
-            // console.log("channel " + nbChan + ", frequency " + frequency);
-
-            const amountSamples = dataSize / 4;
-
-            for (let i = 0; i < amountSamples / 2; i++)
+            Reastream.parse(data, (sampleBytes, channel) =>
             {
-                const byte0 = msg[offset];
-                const byte1 = msg[offset + 1];
-                const byte2 = msg[offset + 2];
-                const byte3 = msg[offset + 3];
-                offset += 4;
+                // convert 32bit Reastream float sample to 16bit
+                const convertedSample = Sample16Bit.from32BitFloatAsBytes(sampleBytes);
 
-                const sampleArray = new Uint8Array([byte0, byte1, byte2, byte3]);
-
-                // debugging
-                // const sample = byte0 | byte1 << 8 | byte2 << 16 | byte3 << 24;
-
-                const dataView = new DataView(sampleArray.buffer);
-                const value32Bit:number = dataView.getFloat32(0, true);
-                const value16Bit:number = Math.floor(value32Bit > 0 ? value32Bit * 32767 : value32Bit * 32768);
-
-                this.putSample(value16Bit);
-            }
+                // write converted sample of channel 1 to mono discord stream
+                if (channel === ReastreamChannelIdentifier.AUDIO_CHANNEL_1)
+                    this.stream.write(Buffer.from([convertedSample.loByte, convertedSample.hiByte]));
+            });
         });
 
         this.initDiscordConnection();
@@ -85,7 +59,7 @@ export class Server
         channel.join()
             .then((connection:VoiceConnection) =>
             {
-                Logger.log(this, "successfully joined " + connection);
+                Logger.log(this, "successfully joined channel \"" + channel.name + "\"");
                 this.voiceConnection = connection;
 
                 if (this.voiceConnection)
@@ -132,12 +106,5 @@ export class Server
             {
                 Logger.error(this, "unable to log into server", e);
             });
-    }
-
-    private putSample(value16Bit:number)
-    {
-        const hiByte:number = value16Bit >> 8 & 0xff;
-        const lowByte:number = value16Bit & 0xff;
-        this.stream.write(Buffer.from([lowByte, hiByte]));
     }
 }

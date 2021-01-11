@@ -1,0 +1,12 @@
+export enum ReastreamChannelIdentifier
+{
+    NO_CHANNEL,
+    AUDIO_CHANNEL_1,
+    AUDIO_CHANNEL_2,
+    AUDIO_CHANNEL_3,
+    AUDIO_CHANNEL_4,
+    AUDIO_CHANNEL_5,
+    AUDIO_CHANNEL_6,
+    AUDIO_CHANNEL_7,
+    AUDIO_CHANNEL_8
+}
