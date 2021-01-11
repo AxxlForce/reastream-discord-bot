@@ -36,3 +36,6 @@ dist
 
 # Ignore output from coverage report
 coverage
+
+# this contains the token and cannot be checked in
+bot_config.json

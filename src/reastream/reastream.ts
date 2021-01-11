@@ -1,19 +1,20 @@
 import {ReastreamChannelIdentifier} from "./reastreamChannelIdentifier";
+import {fourBytesToNumber, twoBytesToNumber} from "../util/convert";
 
 export class Reastream
 {
     static readonly SAMPLE_SIZE_32_BIT_FLOAT = 4;
 
-    public static parse(msg:Uint8Array, putSample:(sample:Uint8Array, channel:ReastreamChannelIdentifier) => void)
+    public static parse(data:Uint8Array, putSample:(sample:Uint8Array, channel:ReastreamChannelIdentifier, frequency:number) => void)
     {
-        const totalChannels = msg[40];
+        const totalChannels = data[40];
 
         if (totalChannels < 1)
             return;
 
-        const packetSize = msg[4] | msg[5] << 8;
-        const frequency = msg[41] | msg[42] << 8;
-        const dataSize = msg[45] | msg[46] << 8;
+        const packetSize = fourBytesToNumber(data, 4);
+        const frequency = fourBytesToNumber(data, 41);
+        const dataSize = twoBytesToNumber(data, 45);
         let offset = 47;
 
         const totalSamples = dataSize / Reastream.SAMPLE_SIZE_32_BIT_FLOAT;
@@ -23,14 +24,13 @@ export class Reastream
         {
             for (let i = 0; i < samplesPerChannel; i++)
             {
-                const byte0 = msg[offset];
-                const byte1 = msg[offset + 1];
-                const byte2 = msg[offset + 2];
-                const byte3 = msg[offset + 3];
+                const byte0 = data[offset];
+                const byte1 = data[offset + 1];
+                const byte2 = data[offset + 2];
+                const byte3 = data[offset + 3];
                 const sampleBytes = new Uint8Array([byte0, byte1, byte2, byte3]);
 
-
-                putSample(sampleBytes, Reastream.indexToChannel(channelNumber));
+                putSample(sampleBytes, Reastream.indexToChannel(channelNumber), frequency);
 
                 // move offset
                 offset += Reastream.SAMPLE_SIZE_32_BIT_FLOAT;

@@ -1,26 +1,70 @@
 import Discord, {Client, Message, VoiceChannel, VoiceConnection} from "discord.js";
-import {CommandHandler} from "./comanndHandler";
-import {BotConfig, config} from "./config/config";
 import {PassThrough} from "stream";
 import {Logger} from "./util/logger";
 import {Reastream} from "./reastream/reastream";
 import {ReastreamChannelIdentifier} from "./reastream/reastreamChannelIdentifier";
-import {Sample16Bit} from "./sample16Bit";
+import {PcmSample16Bit} from "./util/pcmSample16Bit";
+import {SamplingRate} from "./util/samplingRate";
+import * as fs from "fs";
+
+class BotConfig
+{
+    private static readonly RECEIVING_ADDRESS_DEFAULT:string = "127.0.0.1";
+    private static readonly RECEIVING_PORT_DEFAULT:number = 58710;
+
+    private readonly parsed:any;
+
+    constructor()
+    {
+        const file = fs.readFileSync("bot_config.json");
+        this.parsed = JSON.parse(file.toString());
+
+        this.validate();
+    }
+
+    public get receivingPort():number
+    {
+        const port = this.parsed["port"]
+
+        if (port)
+            return port;
+
+        return BotConfig.RECEIVING_PORT_DEFAULT;
+    }
+
+    public get token():string
+    {
+        return this.parsed["token"];
+    }
+
+    public get channel():string
+    {
+        return this.parsed["channel"];
+    }
+
+    public get receivingAddress():string
+    {
+        const address = this.parsed["receiving_address"]
+
+        if (address)
+            return address;
+
+        return BotConfig.RECEIVING_ADDRESS_DEFAULT;
+    }
+
+    private validate()
+    {
+        if (!this.token || !this.channel)
+            throw new Error("bot_config.json not configured properly");
+    }
+}
 
 export class Server
 {
+    private userConfig:BotConfig = new BotConfig();
     private discordClient:Client;
-    private commandHandler:CommandHandler;
-    private stream = new PassThrough();
+    private audioStream = new PassThrough();
     private voiceConnection:VoiceConnection;
-
-    private static validateConfig(botConf:BotConfig)
-    {
-        if (!botConf.token)
-        {
-            throw new Error("You need to specify your Discord bot token!");
-        }
-    }
 
     public run():void
     {
@@ -34,36 +78,42 @@ export class Server
 
         udpClient.on("message", (data:Uint8Array, info:any) =>
         {
-            Reastream.parse(data, (sampleBytes, channel) =>
+            Reastream.parse(data, (sampleBytes:Uint8Array, channel:ReastreamChannelIdentifier, frequency:number) =>
             {
                 // convert 32bit Reastream float sample to 16bit
-                const convertedSample = Sample16Bit.from32BitFloatAsBytes(sampleBytes);
+                const convertedSample = PcmSample16Bit.from32BitFloatAsBytes(sampleBytes);
 
                 // write converted sample of channel 1 to mono discord stream
                 if (channel === ReastreamChannelIdentifier.AUDIO_CHANNEL_1)
-                    this.stream.write(Buffer.from([convertedSample.loByte, convertedSample.hiByte]));
+                {
+                    this.audioStream.write(Buffer.from([convertedSample.loByte, convertedSample.hiByte]));
+
+                    // TODO this is hack as resampling is not yet implemented
+                    if (frequency === SamplingRate.HZ_480000)
+                        this.audioStream.write(Buffer.from([convertedSample.loByte, convertedSample.hiByte]));
+                }
             });
         });
 
         this.initDiscordConnection();
 
-        udpClient.bind(58710, "127.0.0.1");
+        udpClient.bind(this.userConfig.receivingPort, this.userConfig.receivingAddress);
     }
 
     private joinChannel()
     {
-        const channel:VoiceChannel = this.discordClient.channels.cache.find((ch:VoiceChannel) => ch.name === "Stallion Nightmare") as VoiceChannel;
+        const channel:VoiceChannel = this.discordClient.channels.cache.find((ch:VoiceChannel) => ch.name === this.userConfig.channel) as VoiceChannel;
 
         if (!channel) return Logger.error(this, "the channel does not exist");
 
         channel.join()
             .then((connection:VoiceConnection) =>
             {
-                Logger.log(this, "successfully joined channel \"" + channel.name + "\"");
+                Logger.log(this, "successfully joined channel \"" + channel.name + "\", bitrate " + channel.bitrate);
                 this.voiceConnection = connection;
 
                 if (this.voiceConnection)
-                    this.voiceConnection.play(this.stream, {type: "converted"});
+                    this.voiceConnection.play(this.audioStream, {type: "converted"});
 
             })
             .catch((e:Error) =>
@@ -74,12 +124,7 @@ export class Server
 
     private initDiscordConnection()
     {
-        Server.validateConfig(config);
-
-        // const guild = this.discordClient.guilds;
-
         this.discordClient = new Discord.Client();
-        this.commandHandler = new CommandHandler(config.prefix);
 
         this.discordClient.on("ready", () =>
         {
@@ -87,20 +132,21 @@ export class Server
         });
 
         this.discordClient.on("message", (message:Message) =>
-            {
-            }
-        );
+        {
+        });
 
         this.discordClient.on("error", (e) =>
         {
             Logger.error(this, "Discord client error", e);
         });
 
-        this.discordClient.login(config.token)
+        this.discordClient.login(this.userConfig.token)
             .then((result:string) =>
             {
                 Logger.log(this, "logged in with token " + result);
-                this.joinChannel();
+
+                // give some time before logging in
+                setTimeout(() => this.joinChannel(), 100);
             })
             .catch((e:Error) =>
             {
