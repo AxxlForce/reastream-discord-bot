@@ -1,6 +1,6 @@
 # reascript-discord-bot
 
-A bot that can receive Reastream VST output (UDP packets) and stream it into a discord server. 
+A bot that can receive Reastream VST output (UDP packets) and stream it into a discord voice channel. 
 
 ## Configuration
 
