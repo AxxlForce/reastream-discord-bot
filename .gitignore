@@ -37,5 +37,8 @@ dist
 # Ignore output from coverage report
 coverage
 
+# build binaries
+build
+
 # this contains the token and cannot be checked in
 bot_config.json
