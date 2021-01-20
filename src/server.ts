@@ -78,7 +78,7 @@ export class Server
         udpClient.on("listening", () =>
         {
             const address = udpClient.address();
-            Logger.log(this, "listening on :" + address.address + ":" + address.port);
+            Logger.log(this, "listening on " + address.address + ":" + address.port);
         });
 
         udpClient.on("message", (data:Uint8Array, info:any) =>
@@ -109,7 +109,7 @@ export class Server
     {
         const channel:VoiceChannel = this.discordClient.channels.cache.find((ch:VoiceChannel) => ch.name === this.userConfig.channel) as VoiceChannel;
 
-        if (!channel) return Logger.error(this, "the channel does not exist");
+        if (!channel) return Logger.error(this, "channel \"" + this.userConfig.channel + "\" does not exist");
 
         channel.join()
             .then((connection:VoiceConnection) =>
