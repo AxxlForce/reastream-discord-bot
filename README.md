@@ -6,6 +6,8 @@ A bot that can receive Reastream VST output (UDP packets) and stream it into a D
 
 **This is a very early development stage. Prepare to encounter numerous bugs and feel free to contribute by creating issues etc.**
 
+**Right now only 48000 and 96000 Hz are supported, so you'll have to adjust your audio interface accordingly**.
+
 ## Configuration 
 
 ### Bot (bot_config.json)
