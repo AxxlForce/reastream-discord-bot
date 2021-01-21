@@ -2,6 +2,10 @@
 
 A bot that can receive Reastream VST output (UDP packets) and stream it into a Discord voice channel. This way you can stream your favourite guitar plugin chain or even work on DAW projects together while streaming the master track of your DAW directly into Discord for all to hear.
 
+[Get the latest version here](https://github.com/AxxlForce/reastream-discord-bot/releases)
+
+**This is a very early development stage. Prepare to encounter numerous bugs and feel free to contribute by creating issues etc.**
+
 ## Configuration 
 
 ### Bot (bot_config.json)
