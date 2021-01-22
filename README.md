@@ -1,4 +1,4 @@
-# reascript-discord-bot
+# reastream-discord-bot
 
 A bot that can receive Reastream VST output (UDP packets) and stream it into a Discord voice channel. This way you can stream your favourite guitar plugin chain or even work on DAW projects together while streaming the master track of your DAW directly into Discord for all to hear.
 
